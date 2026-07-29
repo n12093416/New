@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>초경량 HDOC 에디터 (.hdoc)</title>
+    <style>
+        :root {
+            --primary: #8B5CF6;
+            --primary-hover: #7C3AED;
+            --bg-dark: #1F2937;
+            --bg-light: #F3F4F6;
+            --border: #D1D5DB;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Pretendard', -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: var(--bg-light);
+        }
+
+        header {
+            background-color: white;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+
+        .title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #111827;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .title-badge {
+            background-color: var(--primary);
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background-color: white;
+            color: #374151;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn:hover { background-color: #F9FAFB; }
+
+        .btn.primary {
+            background-color: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .btn.primary:hover { background-color: var(--primary-hover); }
+
+        .filename-input {
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 0.9rem;
+            outline: none;
+            width: 150px;
+            text-align: right;
+        }
+
+        .workspace {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .editor-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-dark);
+        }
+
+        .pane-header {
+            background-color: #111827;
+            color: #9CA3AF;
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        textarea {
+            flex: 1;
+            background-color: transparent;
+            color: #E5E7EB;
+            padding: 1.5rem;
+            border: none;
+            font-family: 'D2Coding', 'Consolas', monospace;
+            font-size: 1rem;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+        }
+
+        .preview-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: white;
+            border-left: 2px solid var(--border);
+        }
+
+        .preview-header {
+            background-color: #F9FAFB;
+            color: #4B5563;
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+            font-weight: bold;
+            border-bottom: 1px solid var(--border);
+        }
+
+        #previewFrame {
+            flex: 1;
+            border: none;
+            width: 100%;
+            height: 100%;
+        }
+
+        .size-info {
+            font-size: 0.8rem;
+            color: #A7F3D0;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="title">
+            <span>HDOC Editor</span>
+            <span class="title-badge">.hdoc (고압축)</span>
+        </div>
+        <div class="toolbar">
+            <label class="btn">
+                📂 .hdoc 불러오기
+                <input type="file" id="fileInput" accept=".hdoc" style="display: none;">
+            </label>
+            <div style="display: flex; align-items: center; margin-left: 10px;">
+                <input type="text" id="filenameInput" class="filename-input" value="my_page">
+                <span style="font-weight: bold; color: #6B7280; margin-left: 4px;">.hdoc</span>
+            </div>
+            <button id="saveBtn" class="btn primary">💾 .hdoc 압축 저장</button>
+        </div>
+    </header>
+
+    <div class="workspace">
+        <div class="editor-pane">
+            <div class="pane-header">
+                <span>HTML 소스 코드 입력</span>
+                <span id="sizeStats" class="size-info"></span>
+            </div>
+            <textarea id="htmlInput" spellcheck="false">
+<h1>고압축 HDOC 포맷</h1>
+<p>이 파일은 HTML 원본보다 <b>용량이 훨씬 적습니다!</b></p>
+<hr>
+<p>반복되는 태그나 긴 스타일 코드가 들어갈수록 압축률이 극대화됩니다.</p>
+<style>
+    body { font-family: sans-serif; padding: 20px; }
+    h1 { color: #8B5CF6; }
+    p { font-size: 1.1rem; color: #374151; }
+</style>
+</textarea>
+        </div>
+        <div class="preview-pane">
+            <div class="preview-header">실시간 렌더링 뷰</div>
+            <iframe id="previewFrame"></iframe>
+        </div>
+    </div>
+
+    <script>
+        const htmlInput = document.getElementById('htmlInput');
+        const previewFrame = document.getElementById('previewFrame');
+        const saveBtn = document.getElementById('saveBtn');
+        const fileInput = document.getElementById('fileInput');
+        const filenameInput = document.getElementById('filenameInput');
+        const sizeStats = document.getElementById('sizeStats');
+
+        // 실시간 미리보기
+        function updatePreview() {
+            const code = htmlInput.value;
+            const doc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+            doc.open();
+            doc.write(code);
+            doc.close();
+            
+            const bytes = new TextEncoder().encode(code).length;
+            sizeStats.innerText = `원본 크기: ${bytes} bytes`;
+        }
+
+        htmlInput.addEventListener('input', updatePreview);
+        window.onload = updatePreview;
+
+        // Gzip/Deflate 스트림 압축 유틸리티
+        async function compressData(text) {
+            const stream = new Blob([text]).stream().pipeThrough(new CompressionStream('deflate'));
+            const response = new Response(stream);
+            return await response.arrayBuffer();
+        }
+
+        async function decompressData(arrayBuffer) {
+            const stream = new Blob([arrayBuffer]).stream().pipeThrough(new DecompressionStream('deflate'));
+            const response = new Response(stream);
+            return await response.text();
+        }
+
+        // .hdoc 압축 저장 로직
+        saveBtn.addEventListener('click', async () => {
+            const rawHtml = htmlInput.value;
+            
+            // 1. 코드를 Deflate 알고리즘으로 강하게 압축
+            const compressedBuffer = await compressData(rawHtml);
+            
+            // 2. 고유 헤더(시그니처)와 압축 데이터 결합
+            const header = new TextEncoder().encode('HDOC_Z1');
+            const finalBuffer = new Uint8Array(header.length + compressedBuffer.byteLength);
+            
+            finalBuffer.set(header, 0);
+            finalBuffer.set(new Uint8Array(compressedBuffer), header.length);
+
+            const blob = new Blob([finalBuffer], { type: "application/octet-stream" });
+            const url = URL.createObjectURL(blob);
+            
+            let filename = filenameInput.value.trim() || "document";
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${filename}.hdoc`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            alert(`저장 완료!\n원본: ${new TextEncoder().encode(rawHtml).length} bytes\n압축후(.hdoc): ${blob.size} bytes`);
+        });
+
+        // .hdoc 해제 및 불러오기 로직
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            filenameInput.value = file.name.replace(/\.hdoc$/i, '');
+
+            try {
+                const buffer = await file.arrayBuffer();
+                const header = new TextDecoder().decode(buffer.slice(0, 7));
+                
+                if (header !== 'HDOC_Z1') {
+                    alert('올바르지 않거나 압축되지 않은 .hdoc 파일입니다!');
+                    return;
+                }
+
+                // 헤더 7바이트 제외한 실제 압축 데이터 해제
+                const compressedData = buffer.slice(7);
+                const decompressedHtml = await decompressData(compressedData);
+                
+                htmlInput.value = decompressedHtml;
+                updatePreview();
+            } catch (error) {
+                alert('.hdoc 파일을 해독하는 중 오류가 발생했습니다.');
+            }
+            
+            fileInput.value = '';
+        });
+    </script>
+</body>
+</html>
